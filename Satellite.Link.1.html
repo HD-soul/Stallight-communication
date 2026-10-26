@@ -1,0 +1,1302 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Satellite Link</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: letterboxed 16:9 cinema stage with HUD layers, a transport bar and a scene index below. Dark by choice: the subject is a night-side space film. */
+:root{
+  --space:#04060c;
+  --panel:#0a111e;
+  --ink:#e9eff8;
+  --muted:#8d9db5;
+  --line:#1b2a44;
+  --uplink:#4cc9ff;
+  --downlink:#ffb23e;
+  --signal:#7dffb0;
+  --font-display:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --font-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --font-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+html{background:var(--space)}
+body{
+  background:var(--space);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:20px 32px;
+}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 24px;justify-content:space-between}
+h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:clamp(28px,4.4vw,44px);letter-spacing:.04em;text-transform:uppercase;line-height:1;text-wrap:balance}
+.sub{margin:0;color:var(--muted);max-width:62ch;font-size:14px}
+.stage{
+  position:relative;width:min(100%,calc((100svh - 230px) * 16 / 9));min-width:min(100%,300px);margin-inline:auto;
+  aspect-ratio:16/9;background:#02030a;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+  container-type:inline-size;
+}
+.stage:fullscreen{width:100vw;height:100vh;max-width:none;aspect-ratio:auto;border:0;border-radius:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.layer{position:absolute;inset:0;pointer-events:none}
+.anc{
+  position:absolute;left:0;top:0;opacity:0;transition:opacity .45s;white-space:nowrap;
+  font:600 clamp(9px,1.3cqw,15px)/1 var(--font-display);letter-spacing:.09em;text-transform:uppercase;
+  padding:.38em .7em;background:rgba(4,9,18,.78);border:1px solid var(--line);color:var(--ink);
+}
+.anc::after{content:"";position:absolute;left:50%;top:100%;width:1px;height:12px;background:currentColor;opacity:.6}
+.anc.up{color:var(--uplink);border-color:rgba(76,201,255,.5)}
+.anc.down{color:var(--downlink);border-color:rgba(255,178,62,.5)}
+.anc small{display:block;margin-top:.3em;font:500 .78em/1.1 var(--font-mono);letter-spacing:.02em;text-transform:none;color:var(--muted)}
+.title{
+  position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);text-align:center;opacity:0;transition:opacity .9s;width:90%;
+}
+.title b{display:block;font:700 clamp(20px,5.4cqw,64px)/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase;text-shadow:0 2px 30px #000}
+.title span{display:block;margin-top:1.1cqw;font:500 clamp(10px,1.6cqw,19px)/1.2 var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--uplink)}
+.tag{
+  position:absolute;left:2.6cqw;bottom:7.4cqw;opacity:0;transition:opacity .5s;
+  display:flex;align-items:center;gap:.9cqw;font:600 clamp(11px,2cqw,24px)/1 var(--font-display);letter-spacing:.12em;text-transform:uppercase;
+  padding:.6cqw 1.3cqw .6cqw 1cqw;background:rgba(4,9,18,.7);border-left:.35cqw solid var(--ink);
+}
+.tag.up{border-color:var(--uplink)} .tag.down{border-color:var(--downlink)} .tag.sig{border-color:var(--signal)}
+.chain{
+  position:absolute;left:50%;top:2.2cqw;transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;gap:.5cqw;width:94%;opacity:0;transition:opacity .5s;
+}
+.chain i{
+  font:500 clamp(8px,1.25cqw,14px)/1.15 var(--font-mono);font-style:normal;letter-spacing:.04em;text-transform:uppercase;
+  padding:.55cqw .9cqw;background:rgba(4,9,18,.72);border:1px solid var(--line);color:var(--muted);transition:color .3s,border-color .3s,background .3s;
+}
+.chain i + i::before{content:"\2192";margin-right:.8cqw;color:var(--muted)}
+.chain i.on{color:var(--ink);border-color:var(--uplink);background:rgba(76,201,255,.14)}
+.chain.down i.on{border-color:var(--downlink);background:rgba(255,178,62,.14)}
+.chain.sig i.on{border-color:var(--signal);background:rgba(125,255,176,.12)}
+.cap{
+  position:absolute;left:50%;bottom:2cqw;transform:translateX(-50%);width:84%;text-align:center;
+  font:400 clamp(10px,1.75cqw,21px)/1.35 var(--font-body);color:#fff;text-shadow:0 1px 2px #000,0 0 14px #000;opacity:0;transition:opacity .3s;
+}
+.cap.show{opacity:1}
+.foot{
+  position:absolute;right:2cqw;top:2.2cqw;font:400 clamp(7px,.95cqw,11px)/1.3 var(--font-mono);color:var(--muted);text-align:right;max-width:30%;opacity:0;transition:opacity .5s
+}
+.fade{position:absolute;inset:0;background:#000;opacity:1;pointer-events:none}
+.loading{position:absolute;inset:0;display:grid;place-items:center;background:#02030a;color:var(--muted);font:500 13px var(--font-mono);letter-spacing:.14em;text-transform:uppercase;transition:opacity .6s}
+.loading.done{opacity:0;pointer-events:none}
+.bar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center}
+.bar button{
+  font:600 13px/1 var(--font-display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);background:var(--panel);
+  border:1px solid var(--line);border-radius:4px;padding:10px 14px;cursor:pointer;min-height:40px
+}
+.bar button:hover{border-color:var(--uplink)}
+.bar button[aria-pressed="true"]{border-color:var(--uplink);color:var(--uplink)}
+.bar button:focus-visible,.bar input:focus-visible,.scenes button:focus-visible{outline:2px solid var(--uplink);outline-offset:2px}
+.bar select{font:500 13px var(--font-body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:9px 10px;min-height:40px;max-width:240px}
+.bar select:focus-visible{outline:2px solid var(--uplink);outline-offset:2px}
+.bar input[type=range]{flex:1 1 220px;min-width:140px;accent-color:var(--uplink);height:28px}
+.clock{font:500 13px var(--font-mono);color:var(--muted);min-width:9.5ch;text-align:right;font-variant-numeric:tabular-nums}
+.scenes{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.scenes button{
+  text-align:left;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:9px 12px;cursor:pointer;
+  display:flex;flex-direction:column;gap:3px;min-width:0
+}
+.scenes button:hover{border-color:var(--muted)}
+.scenes button.on{border-color:var(--uplink);background:rgba(76,201,255,.07)}
+.scenes b{font:600 15px/1.1 var(--font-display);letter-spacing:.08em;text-transform:uppercase}
+.scenes span{font:400 12px var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.note{margin:0;color:var(--muted);font-size:12.5px;max-width:90ch}
+@media (max-width:560px){.bar button{padding:9px 11px}.clock{order:3;text-align:left}}
+@media (prefers-reduced-motion:reduce){.title,.tag,.anc,.chain,.cap{transition:none}}
+</style>
+<main class="wrap">
+  <header class="top">
+    <h1>Satellite Link</h1>
+    <p class="sub">A real-time 3D film of one signal going from an Earth station, up to a satellite transponder and back down to a second station. Running time 2:40.</p>
+  </header>
+  <section class="stage" id="stage" aria-label="3D animation of a satellite communication link">
+    <canvas id="gl"></canvas>
+    <div class="layer" id="anchors"></div>
+    <div class="layer">
+      <div class="title" id="title"><b>How Satellite Communication Works</b><span>From Earth to space and back</span></div>
+      <div class="chain" id="chain"></div>
+      <div class="foot" id="foot">Frequencies shown (14 GHz up, 12 GHz down) are an illustrative Ku-band example.</div>
+      <div class="tag" id="tag"></div>
+      <div class="cap" id="cap" aria-live="off"></div>
+    </div>
+    <div class="fade" id="fade"></div>
+    <div class="loading" id="loading">Building Earth&hellip;</div>
+  </section>
+  <div class="bar" role="group" aria-label="Playback controls">
+    <button id="play" type="button">Pause</button>
+    <button id="restart" type="button">Restart</button>
+    <input id="seek" type="range" min="0" max="160" step="0.05" value="0" aria-label="Timeline position">
+    <span class="clock" id="clock">0:00 / 2:40</span>
+    <button id="nar" type="button" aria-pressed="false">Narration</button>
+    <select id="voice" aria-label="Narrator voice" title="Narrator voice"><option>Male voice (auto)</option></select>
+    <button id="amb" type="button" aria-pressed="false">Ambience</button>
+    <button id="fs" type="button">Fullscreen</button>
+  </div>
+  <nav class="scenes" id="scenes" aria-label="Scenes"></nav>
+  <p class="note">Stylised for clarity. Distances, dish sizes and the satellite's size are not to scale. The two stations sit inside one satellite's coverage footprint, because a single geostationary satellite cannot see opposite sides of the Earth. Blue and amber beams stand in for invisible radio waves. Narration uses your browser's built-in voice; start it with the Narration button. To make a video file, use fullscreen and a screen recorder.</p>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){'use strict';
+/* ---------- core helpers ---------- */
+const $ = (id) => document.getElementById(id);
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const DEG = Math.PI / 180;
+const R = 5; /* Earth radius in scene units (stylised) */
+const surf = (lat, lon, h = 0) => {
+  const la = lat * DEG, lo = lon * DEG, r = R + h;
+  return V3(r * Math.cos(la) * Math.sin(lo), r * Math.sin(la), r * Math.cos(la) * Math.cos(lo));
+};
+const SAT = V3(0, 0, 10);
+const SUN = V3(0.25, 0.28, 0.9).normalize();
+const UP = V3(0, 1, 0), ZAX = V3(0, 0, 1);
+
+/* local east / north / up frame at a surface point */
+function frame(lat, lon) {
+  const p = surf(lat, lon), n = p.clone().normalize();
+  const e = V3(Math.cos(lon * DEG), 0, -Math.sin(lon * DEG)).normalize();
+  const nn = n.clone().cross(e).normalize();
+  return {
+    p, n, e, nn, lat, lon,
+    at: (x, y, z) => p.clone().addScaledVector(e, x).addScaledVector(nn, y).addScaledVector(n, z),
+  };
+}
+const FA = frame(8, -38), FB = frame(4, 38);
+
+/* ---------- renderer ---------- */
+const stageEl = $('stage'), canvas = $('gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (err) {
+  $('loading').textContent = 'This animation needs WebGL, which is not available here.';
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+renderer.setClearColor(0x02030a, 1);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 16 / 9, 0.04, 1500);
+const world = new THREE.Group();   /* Earth, satellite, stations, beams */
+scene.add(world);
+
+function resize() {
+  const w = stageEl.clientWidth, h = stageEl.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(stageEl);
+resize();
+
+/* ---------- procedural noise ---------- */
+function h3(x, y, z) {
+  let h = Math.imul(x | 0, 374761393) ^ Math.imul(y | 0, 668265263) ^ Math.imul(z | 0, 1274126177);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967295;
+}
+function vn(x, y, z) {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+  const c = (a, b, d) => h3(xi + a, yi + b, zi + d);
+  return lerp(
+    lerp(lerp(c(0, 0, 0), c(1, 0, 0), u), lerp(c(0, 1, 0), c(1, 1, 0), u), v),
+    lerp(lerp(c(0, 0, 1), c(1, 0, 1), u), lerp(c(0, 1, 1), c(1, 1, 1), u), v), w);
+}
+function fbm(x, y, z, o = 5) {
+  let a = 0.5, s = 0, f = 1;
+  for (let i = 0; i < o; i++) { s += a * vn(x * f, y * f, z * f); f *= 2.03; a *= 0.5; }
+  return s;
+}
+const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+const sm = (a, b, x) => sstep(a, b, x);
+
+/* ---------- Earth textures ---------- */
+function buildEarthTextures() {
+  const W = 1024, H = 512;
+  const dayC = mk(W, H), nightC = mk(W, H), cloudC = mk(W, H);
+  const dc = dayC.getContext('2d'), nc = nightC.getContext('2d'), cc = cloudC.getContext('2d');
+  const dI = dc.createImageData(W, H), nI = nc.createImageData(W, H), cI = cc.createImageData(W, H);
+  const nA = FA.n, nB = FB.n;
+  for (let y = 0; y < H; y++) {
+    const lat = (0.5 - (y + 0.5) / H) * Math.PI;
+    const cl = Math.cos(lat), sl = Math.sin(lat), alat = Math.abs(lat) / DEG;
+    for (let x = 0; x < W; x++) {
+      const lon = 2 * Math.PI * ((x + 0.5) / W) - Math.PI / 2;
+      const px = cl * Math.sin(lon), py = sl, pz = cl * Math.cos(lon);
+      let e = fbm(px * 1.7 + 3, py * 1.7 + 1, pz * 1.7 + 7, 6);
+      const gA = Math.exp(-((px - nA.x) ** 2 + (py - nA.y) ** 2 + (pz - nA.z) ** 2) / 0.07);
+      const gB = Math.exp(-((px - nB.x) ** 2 + (py - nB.y) ** 2 + (pz - nB.z) ** 2) / 0.07);
+      e += 0.2 * (gA + gB);
+      const i = (y * W + x) * 4;
+      let r, g, b, L = 0;
+      if (e < 0.5) {
+        const d = clamp((0.5 - e) * 4.5);
+        r = lerp(0.07, 0.015, d); g = lerp(0.3, 0.1, d); b = lerp(0.5, 0.28, d);
+        if (alat > 74) { const k = sm(74, 82, alat); r = lerp(r, 0.8, k); g = lerp(g, 0.86, k); b = lerp(b, 0.92, k); }
+      } else {
+        const h = (e - 0.5) * 3.2, m = fbm(px * 3.6 + 9, py * 3.6, pz * 3.6 + 2, 4);
+        const dry = clamp((m - 0.38) * 4 + (1 - alat / 60) * 0.25);
+        r = lerp(0.16, 0.58, dry); g = lerp(0.34, 0.47, dry); b = lerp(0.12, 0.27, dry);
+        const hk = sm(0.35, 0.9, h); r = lerp(r, 0.5, hk); g = lerp(g, 0.44, hk); b = lerp(b, 0.38, hk);
+        const ice = sm(60, 72, alat + h * 14); r = lerp(r, 0.93, ice); g = lerp(g, 0.95, ice); b = lerp(b, 0.97, ice);
+        if (alat < 62) {
+          const cluster = fbm(px * 5 + 4, py * 5 + 8, pz * 5 + 1, 3);
+          const dot = vn(px * 70, py * 70, pz * 70);
+          L = sm(0.5, 0.68, cluster) * sm(0.5, 0.82, dot);
+        }
+      }
+      dI.data[i] = r * 255; dI.data[i + 1] = g * 255; dI.data[i + 2] = b * 255; dI.data[i + 3] = 255;
+      nI.data[i] = L * 255; nI.data[i + 1] = L * 190; nI.data[i + 2] = L * 100; nI.data[i + 3] = 255;
+      const cv = fbm(px * 2.4 + 20, py * 3.2 + 5, pz * 2.4 + 11, 5);
+      const a = sm(0.47, 0.72, cv) * 0.92;
+      cI.data[i] = 255; cI.data[i + 1] = 255; cI.data[i + 2] = 255; cI.data[i + 3] = a * 255;
+    }
+  }
+  dc.putImageData(dI, 0, 0); nc.putImageData(nI, 0, 0); cc.putImageData(cI, 0, 0);
+  const t = (c) => { const x = new THREE.CanvasTexture(c); x.anisotropy = 4; x.wrapS = THREE.RepeatWrapping; return x; };
+  return { day: t(dayC), night: t(nightC), cloud: t(cloudC) };
+}
+
+function glowTexture() {
+  const c = mk(128, 128), g = c.getContext('2d');
+  const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.18, 'rgba(255,255,255,.55)');
+  gr.addColorStop(0.45, 'rgba(255,255,255,.14)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+const GLOW = glowTexture();
+function glow(color, size, opacity = 1) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
+  s.scale.set(size, size, 1);
+  return s;
+}
+
+/* ---------- lights, stars, Earth shell ---------- */
+const sunLight = new THREE.DirectionalLight(0xfff0dc, 2.3);
+sunLight.position.copy(SUN).multiplyScalar(120);
+scene.add(sunLight);
+scene.add(new THREE.AmbientLight(0x2a3a5c, 0.7));
+scene.add(new THREE.HemisphereLight(0x9bb7ff, 0x131826, 0.55));
+
+(function stars() {
+  const N = 3200, p = new Float32Array(N * 3), c = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const u = Math.random() * 2 - 1, a = Math.random() * 6.2832, s = Math.sqrt(1 - u * u), r = 700;
+    p[i * 3] = r * s * Math.cos(a); p[i * 3 + 1] = r * u; p[i * 3 + 2] = r * s * Math.sin(a);
+    const k = 0.45 + Math.random() * 0.55, w = Math.random();
+    c[i * 3] = k * (0.85 + 0.15 * w); c[i * 3 + 1] = k * 0.92; c[i * 3 + 2] = k * (1 - 0.2 * w);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(c, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 1.5, sizeAttenuation: false, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false })));
+  const sun = glow(0xffe2b0, 160, 0.9); sun.position.copy(SUN).multiplyScalar(600); scene.add(sun);
+})();
+
+const earth = new THREE.Mesh(new THREE.SphereGeometry(R, 128, 96), new THREE.MeshBasicMaterial({ color: 0x0a3a66 }));
+world.add(earth);
+const clouds = new THREE.Mesh(new THREE.SphereGeometry(R + 0.045, 96, 72), new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, depthWrite: false, roughness: 1 }));
+world.add(clouds);
+const atmo = new THREE.Mesh(new THREE.SphereGeometry(R * 1.075, 64, 48), new THREE.ShaderMaterial({
+  vertexShader: 'varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
+  fragmentShader: 'varying vec3 vN;void main(){float i=pow(max(0.72-dot(vN,vec3(0.,0.,1.)),0.),3.);gl_FragColor=vec4(0.22,0.5,1.,1.)*clamp(i,0.,1.)*1.15;}',
+  side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
+}));
+world.add(atmo);
+
+function applyEarthTextures(tx) {
+  earth.material = new THREE.ShaderMaterial({
+    uniforms: { dayMap: { value: tx.day }, nightMap: { value: tx.night }, sunDir: { value: SUN.clone() } },
+    vertexShader: 'varying vec2 vUv;varying vec3 vN;varying vec3 vV;void main(){vUv=uv;vN=normalize(mat3(modelMatrix)*normal);vec4 wp=modelMatrix*vec4(position,1.);vV=normalize(cameraPosition-wp.xyz);gl_Position=projectionMatrix*viewMatrix*wp;}',
+    fragmentShader: [
+      'uniform sampler2D dayMap;uniform sampler2D nightMap;uniform vec3 sunDir;varying vec2 vUv;varying vec3 vN;varying vec3 vV;',
+      'void main(){vec3 n=normalize(vN);float d=dot(n,sunDir);',
+      'vec3 day=texture2D(dayMap,vUv).rgb;vec3 night=texture2D(nightMap,vUv).rgb;',
+      'float k=smoothstep(-0.12,0.22,d);',
+      'vec3 lit=day*(0.07+1.15*max(d,0.0));',
+      'vec3 dark=day*0.03+night*1.6;',
+      'vec3 col=mix(dark,lit,k);',
+      'float fr=pow(1.0-max(dot(n,vV),0.0),3.0);',
+      'col+=vec3(0.16,0.4,0.9)*fr*(0.2+0.9*max(d+0.25,0.0));',
+      'gl_FragColor=vec4(col,1.0);}',
+    ].join('\n'),
+  });
+  clouds.material.map = tx.cloud;
+  clouds.material.needsUpdate = true;
+}
+/* ---------- model helpers ---------- */
+const std = (color, metal = 0.5, rough = 0.5, extra = {}) => new THREE.MeshStandardMaterial(Object.assign({ color, metalness: metal, roughness: rough }, extra));
+function rod(a, b, r, mat, seg = 8) {
+  const d = b.clone().sub(a), len = d.length();
+  const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, seg), mat);
+  m.position.copy(a).addScaledVector(d, 0.5);
+  m.quaternion.setFromUnitVectors(UP, d.normalize());
+  return m;
+}
+function box(w, h, d, mat, x = 0, y = 0, z = 0) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  m.position.set(x, y, z);
+  return m;
+}
+/* parabolic dish, opening towards +z, vertex at the origin */
+function makeDish(Rr, f, color = 0xeef2f6) {
+  const g = new THREE.Group();
+  const mat = std(color, 0.35, 0.42, { side: THREE.DoubleSide });
+  const pts = [];
+  for (let i = 0; i <= 14; i++) { const r = Rr * i / 14; pts.push(new THREE.Vector2(r, r * r / (4 * f))); }
+  const geo = new THREE.LatheGeometry(pts, 40); geo.rotateX(Math.PI / 2);
+  g.add(new THREE.Mesh(geo, mat));
+  const depth = Rr * Rr / (4 * f);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(Rr, Rr * 0.02, 8, 48), mat); rim.position.z = depth; g.add(rim);
+  const dark = std(0x2a2f38, 0.6, 0.4);
+  const horn = new THREE.Mesh(new THREE.ConeGeometry(Rr * 0.1, Rr * 0.24, 16), dark);
+  horn.rotation.x = Math.PI / 2; horn.position.z = f; g.add(horn);
+  for (let k = 0; k < 3; k++) {
+    const a = k * 2.0944 + 0.5;
+    g.add(rod(V3(Math.cos(a) * Rr * 0.97, Math.sin(a) * Rr * 0.97, depth), V3(0, 0, f), Rr * 0.012, dark, 5));
+  }
+  g.userData = { depth, focus: V3(0, 0, f) };
+  return g;
+}
+
+/* ---------- the communications satellite ---------- */
+function solarTexture() {
+  const c = mk(256, 256), g = c.getContext('2d');
+  g.fillStyle = '#0c1d4a'; g.fillRect(0, 0, 256, 256);
+  const gr = g.createLinearGradient(0, 0, 256, 256);
+  gr.addColorStop(0, 'rgba(90,140,230,.38)'); gr.addColorStop(1, 'rgba(10,20,60,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  g.strokeStyle = 'rgba(150,185,240,.55)'; g.lineWidth = 2;
+  for (let i = 0; i <= 8; i++) {
+    g.beginPath(); g.moveTo(i * 32, 0); g.lineTo(i * 32, 256); g.stroke();
+    g.beginPath(); g.moveTo(0, i * 32); g.lineTo(256, i * 32); g.stroke();
+  }
+  g.strokeStyle = '#b88f3a'; g.lineWidth = 8; g.strokeRect(0, 0, 256, 256);
+  const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+}
+const SOLAR_TEX = solarTexture();
+
+function makeSatellite() {
+  const g = new THREE.Group();
+  const gold = std(0xd0a64a, 0.88, 0.3), silver = std(0xcdd5de, 0.8, 0.28), mli = std(0xe9e6dc, 0.15, 0.75), dark = std(0x1b2029, 0.6, 0.4);
+  g.add(box(1, 1, 0.9, gold, 0, 0, -0.3));
+  g.add(box(1.01, 1.01, 0.6, mli, 0, 0, 0.45));
+  g.add(box(1.03, 1.03, 0.04, dark, 0, 0, 0.15));
+  for (const s of [-1, 1]) g.add(box(0.03, 0.8, 0.8, silver, s * 0.515, 0, 0.45));
+  const cell = new THREE.MeshStandardMaterial({ map: SOLAR_TEX, metalness: 0.55, roughness: 0.35, emissive: 0x0a1a44, emissiveIntensity: 0.55 });
+  const edge = std(0x9a7b32, 0.8, 0.4);
+  const wingMats = [edge, edge, edge, edge, cell, cell];
+  for (const s of [-1, 1]) {
+    g.add(rod(V3(0, s * 0.5, 0.1), V3(0, s * 0.78, 0.1), 0.05, silver));
+    g.add(box(0.06, 3.9, 0.04, dark, 0, s * (0.78 + 1.95), 0.07));
+    for (let i = 0; i < 3; i++) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(1.15, 1.2, 0.02), wingMats);
+      p.position.set(0, s * (0.78 + 0.64 + i * 1.27), 0.1);
+      g.add(p);
+    }
+  }
+  /* thrusters, star tracker, omni antenna */
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+    const t = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.1, 10), dark);
+    t.rotation.x = Math.PI / 2; t.position.set(sx * 0.46, sy * 0.46, -0.8); g.add(t);
+  }
+  const trk = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.16, 12), dark);
+  trk.rotation.x = Math.PI / 2; trk.position.set(0.3, 0.3, 0.8); g.add(trk);
+  g.add(rod(V3(-0.3, -0.3, 0.75), V3(-0.3, -0.3, 1.2), 0.012, silver));
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 8), silver); ball.position.set(-0.3, -0.3, 1.2); g.add(ball);
+  /* the two Earth-facing antennas */
+  const rx = makeDish(0.42, 0.38), tx = makeDish(0.42, 0.38);
+  rx.position.set(-0.52, 0, -1.0); tx.position.set(0.52, 0, -1.0);
+  for (const [d, s] of [[rx, -1], [tx, 1]]) {
+    g.add(d);
+    g.add(rod(V3(s * 0.3, 0, -0.75), V3(s * 0.52, 0, -0.98), 0.025, silver));
+    g.add(rod(V3(s * 0.52, 0.3, -0.75), V3(s * 0.52, 0.1, -0.98), 0.018, silver));
+    g.add(rod(V3(s * 0.52, -0.3, -0.75), V3(s * 0.52, -0.1, -0.98), 0.018, silver));
+  }
+  g.position.copy(SAT);
+  g.scale.setScalar(0.5);
+  world.add(g);
+  g.updateMatrixWorld(true);
+  rx.lookAt(FA.p); tx.lookAt(FB.p);
+  g.updateMatrixWorld(true);
+  return { group: g, rx, tx, rxMouth: rx.localToWorld(V3(0, 0, 0.14)), txMouth: tx.localToWorld(V3(0, 0, 0.14)) };
+}
+const sat = makeSatellite();
+
+/* ---------- ground: caps, stations, houses ---------- */
+function capTexture() {
+  const c = mk(512, 512), g = c.getContext('2d');
+  g.fillStyle = '#35502f'; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 2600; i++) {
+    const v = 40 + Math.random() * 50;
+    g.fillStyle = `rgba(${v},${v + 30},${v - 10},.35)`;
+    g.fillRect(Math.random() * 512, Math.random() * 512, 2 + Math.random() * 6, 2 + Math.random() * 6);
+  }
+  g.fillStyle = '#4d5560'; g.fillRect(150, 240, 360, 26);
+  g.fillStyle = '#6a727c'; g.fillRect(180, 170, 190, 170);
+  g.strokeStyle = 'rgba(255,255,255,.35)'; g.setLineDash([14, 12]); g.lineWidth = 2;
+  g.beginPath(); g.moveTo(160, 253); g.lineTo(500, 253); g.stroke();
+  g.globalCompositeOperation = 'destination-in';
+  const m = g.createRadialGradient(256, 256, 70, 256, 256, 256);
+  m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(0.62, 'rgba(0,0,0,.9)'); m.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = m; g.fillRect(0, 0, 512, 512);
+  return new THREE.CanvasTexture(c);
+}
+const CAP_TEX = capTexture();
+function makeCap(fr, radius = 1.9) {
+  const ang = radius / R;
+  const geo = new THREE.SphereGeometry(R + 0.006, 56, 16, 0, Math.PI * 2, 0, ang);
+  const pos = geo.attributes.position, uv = geo.attributes.uv, rc = (R + 0.006) * Math.sin(ang);
+  for (let i = 0; i < pos.count; i++) uv.setXY(i, 0.5 + pos.getX(i) / (2 * rc), 0.5 + pos.getZ(i) / (2 * rc));
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: CAP_TEX, transparent: true, roughness: 1, metalness: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+  m.quaternion.setFromUnitVectors(UP, fr.n);
+  world.add(m);
+  return m;
+}
+function placeOn(obj, fr, x, y, yaw = 0, lift = 0) {
+  const q = fr.p.clone().addScaledVector(fr.e, x).addScaledVector(fr.nn, y).normalize();
+  obj.position.copy(q).multiplyScalar(R + lift);
+  obj.quaternion.copy(new THREE.Quaternion().setFromUnitVectors(ZAX, q)).multiply(new THREE.Quaternion().setFromAxisAngle(ZAX, yaw));
+  return obj;
+}
+function windowTexture() {
+  const c = mk(64, 128), g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, 64, 128);
+  for (let y = 4; y < 128; y += 10) for (let x = 4; x < 64; x += 10) {
+    if (Math.random() < 0.55) { g.fillStyle = Math.random() < 0.7 ? '#ffd48a' : '#bfe3ff'; g.fillRect(x, y, 5, 6); }
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
+const WIN_TEX = windowTexture();
+
+function makeStation(fr, withPerson) {
+  const g = new THREE.Group();
+  g.position.copy(fr.p);
+  g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(fr.e, fr.nn, fr.n));
+  const concrete = std(0xaab2ba, 0.1, 0.9), white = std(0xf1f4f7, 0.2, 0.6), dark = std(0x252b34, 0.5, 0.5), steel = std(0x8d98a6, 0.7, 0.4);
+  g.add(box(1.25, 1.05, 0.08, concrete, -0.1, -0.1, -0.03));
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.055, 0.26, 12), steel); ped.rotation.x = Math.PI / 2; ped.position.z = 0.12; g.add(ped);
+  const hub = new THREE.Mesh(new THREE.SphereGeometry(0.055, 14, 10), steel); hub.position.z = 0.27; g.add(hub);
+  const piv = new THREE.Group(); piv.position.z = 0.3; g.add(piv);
+  const dish = makeDish(0.27, 0.21); piv.add(dish);
+  g.add(box(0.56, 0.36, 0.22, white, -0.78, -0.38, 0.07));
+  g.add(box(0.6, 0.4, 0.03, dark, -0.78, -0.38, 0.19));
+  g.add(box(0.1, 0.01, 0.15, dark, -0.62, -0.565, 0.03));
+  g.add(box(0.14, 0.12, 0.1, steel, -0.46, -0.52, 0.01));
+  g.add(box(0.3, 0.24, 0.16, white, -0.7, 0.14, 0.04));
+  g.add(box(0.34, 0.28, 0.025, dark, -0.7, 0.14, 0.13));
+  const led = glow(0x7dffb0, 0.1); led.position.set(-0.52, -0.2, 0.22); g.add(led);
+  const cp = [V3(-0.5, -0.3, 0.03), V3(-0.28, -0.2, 0.03), V3(-0.08, -0.06, 0.03), V3(0, 0, 0.03), V3(0, 0, 0.27)];
+  for (let i = 0; i < cp.length - 1; i++) g.add(rod(cp[i], cp[i + 1], 0.012, std(0x3a3f4a, 0.3, 0.7), 5));
+  const beacon = glow(0xffffff, 0.7, 0.5); beacon.position.z = 0.5; g.add(beacon);
+  if (withPerson) {
+    const pg = new THREE.Group(); pg.position.set(-1.2, -0.02, 0);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.03, 0.1, 10), std(0xe8a24a, 0.1, 0.8)); body.rotation.x = Math.PI / 2; body.position.z = 0.06; pg.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 10), std(0xd9b08c, 0, 0.8)); head.position.z = 0.135; pg.add(head);
+    pg.add(box(0.012, 0.004, 0.032, std(0x4cc9ff, 0, 0.4, { emissive: 0x4cc9ff, emissiveIntensity: 1.2 }), 0.03, -0.02, 0.1));
+    g.add(pg);
+  }
+  world.add(g);
+  g.updateMatrixWorld(true);
+  piv.lookAt(sat.rxMouth.clone().lerp(sat.txMouth, withPerson ? 0 : 1));
+  g.updateMatrixWorld(true);
+  const cable = cp.map((p) => g.localToWorld(p.clone()));
+  return {
+    group: g, piv, fr, cable, mouth: piv.localToWorld(V3(0, 0, 0.12)),
+    door: g.localToWorld(V3(-0.62, -0.58, 0.05)), person: g.localToWorld(V3(-1.2, -0.02, 0.1)),
+    bldg: g.localToWorld(V3(-0.78, -0.38, 0.1)),
+  };
+}
+const stA = makeStation(FA, true), stB = makeStation(FB, false);
+makeCap(FA); makeCap(FB);
+/* the dish at A aims at the satellite's receive antenna, the one at B at the transmit antenna */
+stA.piv.lookAt(sat.rxMouth); stB.piv.lookAt(sat.txMouth);
+stA.group.updateMatrixWorld(true); stB.group.updateMatrixWorld(true);
+stA.mouth = stA.piv.localToWorld(V3(0, 0, 0.12)); stB.mouth = stB.piv.localToWorld(V3(0, 0, 0.12));
+
+/* destination city next to station B */
+const city = new THREE.Group();
+(function () {
+  const mat = new THREE.MeshStandardMaterial({ color: 0x1a2234, emissive: 0xffffff, emissiveMap: WIN_TEX, emissiveIntensity: 0.9, roughness: 0.8 });
+  for (let i = 0; i < 34; i++) {
+    const x = 0.95 + Math.random() * 1.25, y = -1.0 + Math.random() * 2.0, h = 0.05 + Math.random() * 0.34;
+    const b = new THREE.Mesh(new THREE.BoxGeometry(0.1 + Math.random() * 0.08, 0.1 + Math.random() * 0.08, h), mat);
+    b.geometry.translate(0, 0, h / 2);
+    placeOn(b, FB, x, y, Math.random() * 3);
+    city.add(b);
+  }
+  world.add(city);
+})();
+const cityPoint = FB.at(1.6, 0.1, 0.12);
+
+function makeHouse(withDish, tvGlow = true) {
+  const g = new THREE.Group();
+  g.add(box(0.13, 0.1, 0.07, std(0xe6e0d4, 0.05, 0.9), 0, 0, 0.035));
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.06, 4), std(0x7a3b30, 0.1, 0.8));
+  roof.rotation.x = Math.PI / 2; roof.rotation.y = Math.PI / 4; roof.position.z = 0.1; g.add(roof);
+  if (tvGlow) { g.add(box(0.035, 0.006, 0.028, std(0x66ccff, 0, 0.3, { emissive: 0x66ccff, emissiveIntensity: 1.4 }), 0, -0.052, 0.04)); }
+  if (withDish) {
+    g.add(rod(V3(0.05, 0, 0.07), V3(0.05, 0, 0.13), 0.005, std(0x333a44, 0.5, 0.5), 5));
+    const d = makeDish(0.045, 0.035); d.position.set(0.05, 0, 0.14); d.name = 'dish'; g.add(d);
+  }
+  return g;
+}
+function makeShip() {
+  const g = new THREE.Group();
+  g.add(box(0.3, 0.09, 0.045, std(0x3a4a66, 0.4, 0.6), 0, 0, 0.02));
+  g.add(box(0.08, 0.07, 0.05, std(0xeeeeee, 0.1, 0.7), -0.07, 0, 0.065));
+  const f = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.05, 8), std(0xc43c32, 0.2, 0.7)); f.rotation.x = Math.PI / 2; f.position.set(-0.07, 0, 0.12); g.add(f);
+  return g;
+}
+function makePlane() {
+  const g = new THREE.Group(), w = std(0xf2f4f7, 0.3, 0.5);
+  const fus = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.014, 0.24, 10), w); fus.rotation.z = Math.PI / 2; g.add(fus);
+  g.add(box(0.05, 0.26, 0.008, w, 0.01, 0, 0));
+  g.add(box(0.03, 0.09, 0.006, w, -0.11, 0, 0.004));
+  g.add(box(0.03, 0.006, 0.05, w, -0.11, 0, 0.025));
+  return g;
+}
+function makeWeatherSat() {
+  const g = new THREE.Group();
+  g.add(box(0.5, 0.5, 0.7, std(0xe4e1d6, 0.3, 0.6)));
+  g.add(box(0.52, 0.52, 0.08, std(0xc39a42, 0.85, 0.35), 0, 0, 0.38));
+  const cell = new THREE.MeshStandardMaterial({ map: SOLAR_TEX, metalness: 0.5, roughness: 0.4, emissive: 0x0a1a44, emissiveIntensity: 0.5 });
+  g.add(rod(V3(0.25, 0, 0), V3(0.55, 0, 0), 0.03, std(0xcdd5de, 0.8, 0.3)));
+  const pan = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 0.02), [std(0x9a7b32), std(0x9a7b32), std(0x9a7b32), std(0x9a7b32), cell, cell]);
+  pan.position.set(1.3, 0, 0); g.add(pan);
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.34, 20), std(0x20252d, 0.7, 0.35)); drum.rotation.x = Math.PI / 2; drum.position.z = -0.52; g.add(drum);
+  const lens = new THREE.Mesh(new THREE.CircleGeometry(0.13, 20), std(0x5fb8c9, 0.9, 0.1, { emissive: 0x1a4a58, emissiveIntensity: 0.6 })); lens.rotation.y = Math.PI; lens.position.z = -0.7; g.add(lens);
+  const d = makeDish(0.16, 0.14); d.position.set(-0.2, 0.28, 0.1); d.rotation.x = -Math.PI / 2.4; g.add(d);
+  return g;
+}
+function makeNavSat() {
+  const g = new THREE.Group();
+  g.add(box(0.2, 0.2, 0.26, std(0xd0a64a, 0.85, 0.35)));
+  const cell = new THREE.MeshStandardMaterial({ map: SOLAR_TEX, metalness: 0.5, roughness: 0.4, emissive: 0x0a1a44, emissiveIntensity: 0.5 });
+  for (const s of [-1, 1]) {
+    g.add(rod(V3(s * 0.1, 0, 0), V3(s * 0.2, 0, 0), 0.012, std(0xcdd5de)));
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.01), [std(0x9a7b32), std(0x9a7b32), std(0x9a7b32), std(0x9a7b32), cell, cell]);
+    p.position.set(s * 0.46, 0, 0); g.add(p);
+  }
+  const ant = box(0.14, 0.14, 0.03, std(0xe9e6dc, 0.2, 0.6), 0, 0, -0.15); g.add(ant);
+  return g;
+}
+function hurricaneTexture() {
+  const c = mk(256, 256), g = c.getContext('2d');
+  g.translate(128, 128);
+  for (let arm = 0; arm < 4; arm++) {
+    for (let i = 0; i < 140; i++) {
+      const t = i / 140, a = arm * Math.PI / 2 + t * 5.2, r = 14 + t * 108;
+      g.fillStyle = `rgba(255,255,255,${0.5 * (1 - t) + 0.08})`;
+      g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, 5 + t * 12, 0, 6.3); g.fill();
+    }
+  }
+  g.fillStyle = 'rgba(20,40,70,.55)'; g.beginPath(); g.arc(0, 0, 11, 0, 6.3); g.fill();
+  const t = new THREE.CanvasTexture(c); return t;
+}
+/* ---------- radio-link visualisation ---------- */
+const ADD = THREE.AdditiveBlending;
+class Beam {
+  constructor(a, b, color, o = {}) {
+    this.a = a.clone(); this.b = b.clone();
+    this.len = a.distanceTo(b); this.dir = b.clone().sub(a).normalize();
+    this.w = o.w || 0.014; this.spread = o.spread || 0.22; this.speed = o.speed || 1.0;
+    this.nr = o.rings || 9; this.np = o.pulses || 5; this.psize = o.psize || 0.2;
+    this.color = new THREE.Color(color);
+    this.group = new THREE.Group(); (o.parent || world).add(this.group);
+    const cg = new THREE.CylinderGeometry(1, 1, 1, 12, 1, true); cg.translate(0, 0.5, 0);
+    const mat = (op) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: op, blending: ADD, depthWrite: false });
+    this.core = new THREE.Mesh(cg, mat(0.8)); this.halo = new THREE.Mesh(cg, mat(0.14));
+    for (const m of [this.core, this.halo]) { m.quaternion.setFromUnitVectors(UP, this.dir); m.position.copy(a); this.group.add(m); }
+    const qr = new THREE.Quaternion().setFromUnitVectors(ZAX, this.dir);
+    const rg = new THREE.RingGeometry(0.88, 1, 48);
+    this.rings = [];
+    for (let i = 0; i < this.nr; i++) {
+      const r = new THREE.Mesh(rg, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, blending: ADD, depthWrite: false, side: THREE.DoubleSide }));
+      r.quaternion.copy(qr); this.group.add(r); this.rings.push(r);
+    }
+    this.pulses = [];
+    for (let i = 0; i < this.np; i++) { const s = glow(color, this.psize); this.group.add(s); this.pulses.push(s); }
+    this.group.visible = false;
+  }
+  update(t, prog, level) {
+    const on = prog > 0.003 && level > 0.003;
+    this.group.visible = on;
+    if (!on) return;
+    const L = this.len * prog;
+    this.core.scale.set(this.w, L, this.w); this.halo.scale.set(this.w * 5, L, this.w * 5);
+    this.core.material.opacity = 0.8 * level; this.halo.material.opacity = 0.15 * level;
+    for (let i = 0; i < this.nr; i++) {
+      const f = (t * this.speed * 0.22 + i / this.nr) % 1, s = f * L, r = this.w * 2.5 + (s / this.len) * this.spread;
+      const m = this.rings[i];
+      m.position.copy(this.a).addScaledVector(this.dir, s); m.scale.set(r, r, 1);
+      m.material.opacity = level * 0.5 * Math.sin(Math.PI * f);
+    }
+    for (let i = 0; i < this.np; i++) {
+      const f = (t * this.speed * 0.5 + i / this.np) % 1, s = this.pulses[i];
+      s.position.copy(this.a).addScaledVector(this.dir, f * L);
+      s.material.opacity = level * Math.sin(Math.PI * f);
+    }
+  }
+}
+const upBeam = new Beam(stA.mouth, sat.rxMouth, 0x4cc9ff, { spread: 0.2 });
+const downBeam = new Beam(sat.txMouth, stB.mouth, 0xffb23e, { spread: 0.2 });
+
+/* a ground radio link that runs straight, leaves the surface at the horizon and misses station B */
+const terrBeam = new Beam(FA.at(0, 0, 0.12), FA.at(0, 0, 0.12).addScaledVector(FA.e, 9.5), 0xd8e6ff, { spread: 0.12, w: 0.012, psize: 0.16 });
+const blocked = (function () {
+  const g = new THREE.BufferGeometry().setFromPoints([FA.at(0, 0, 0.1), FB.at(0, 0, 0.1)]);
+  const l = new THREE.Line(g, new THREE.LineDashedMaterial({ color: 0xff6a55, dashSize: 0.18, gapSize: 0.12, transparent: true, opacity: 0, depthTest: false }));
+  l.computeLineDistances(); l.renderOrder = 5; world.add(l); return l;
+})();
+const horizonMark = (function () {
+  const g = new THREE.Group();
+  const s = glow(0xff6a55, 0.6, 0.9); s.position.copy(FA.at(0, 0, 0.12).addScaledVector(FA.e, 2.2)); g.add(s);
+  world.add(g); return g;
+})();
+
+/* ---------- data icons that ride the link ---------- */
+function iconTexture(kind) {
+  const c = mk(96, 96), g = c.getContext('2d');
+  const rr = (x, y, w, h, r) => { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  g.fillStyle = 'rgba(6,12,24,.88)'; rr(4, 4, 88, 88, 16); g.fill();
+  g.lineWidth = 3; g.strokeStyle = 'rgba(255,255,255,.85)'; rr(4, 4, 88, 88, 16); g.stroke();
+  g.fillStyle = '#fff';
+  if (kind === 'voice') { [18, 34, 52, 30, 44, 22].forEach((h, i) => { g.fillRect(18 + i * 11, 48 - h / 2, 6, h); }); }
+  else if (kind === 'video') { g.fillRect(20, 30, 38, 36); g.beginPath(); g.moveTo(62, 48); g.lineTo(78, 36); g.lineTo(78, 60); g.closePath(); g.fill(); }
+  else { g.font = '600 26px "IBM Plex Mono",monospace'; g.textAlign = 'center'; g.fillText('1011', 48, 46); g.fillText('0100', 48, 72); }
+  return new THREE.CanvasTexture(c);
+}
+const ICONS = ['voice', 'video', 'data'].map(iconTexture);
+class IconFlow {
+  constructor(pts, o) {
+    this.pts = pts; this.o = Object.assign({ t0: 0, t1: 0, speed: 1, spacing: 1.2, count: 8, size: 0.3 }, o);
+    this.cum = [0]; for (let i = 1; i < pts.length; i++) this.cum.push(this.cum[i - 1] + pts[i].distanceTo(pts[i - 1]));
+    this.L = this.cum[this.cum.length - 1];
+    this.group = new THREE.Group(); world.add(this.group); this.sprites = [];
+    for (let k = 0; k < this.o.count; k++) {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: ICONS[k % 3], transparent: true, depthWrite: false, depthTest: false }));
+      s.scale.set(this.o.size, this.o.size, 1); s.renderOrder = 8; this.group.add(s); this.sprites.push(s);
+    }
+    this.group.visible = false;
+  }
+  at(s) {
+    let i = 1; while (i < this.cum.length - 1 && this.cum[i] < s) i++;
+    const f = (s - this.cum[i - 1]) / Math.max(1e-6, this.cum[i] - this.cum[i - 1]);
+    return this.pts[i - 1].clone().lerp(this.pts[i], clamp(f));
+  }
+  update(t) {
+    const o = this.o, on = t >= o.t0 && t <= o.t1;
+    this.group.visible = on;
+    if (!on) return;
+    this.sprites.forEach((s, k) => {
+      const d = (t - o.t0) * o.speed - k * o.spacing, ok = d >= 0 && d <= this.L;
+      s.visible = ok;
+      if (ok) { s.position.copy(this.at(d)); s.material.opacity = sstep(0, 0.5, d) * sstep(0, 0.5, this.L - d); if (o.tint) s.material.color.copy(o.tint(d / this.L)); }
+    });
+  }
+}
+/* A: from the caller into the equipment, to the dish */
+const flowA = new IconFlow([stA.person, stA.door, stA.cable[0], stA.cable[2], stA.cable[4], stA.mouth], { t0: 32, t1: 49, speed: 0.55, spacing: 0.55, count: 6, size: 0.17 });
+/* B: from the dish through the receiver to the city */
+const flowB = new IconFlow([stB.mouth, stB.cable[4], stB.cable[2], stB.cable[0], stB.door, cityPoint], { t0: 108, t1: 126, speed: 0.6, spacing: 0.62, count: 6, size: 0.17 });
+/* whole link */
+const linkPts = [stA.door, stA.mouth, sat.rxMouth, sat.group.position.clone().add(V3(0, 0, -0.2)), sat.txMouth, stB.mouth, stB.door, cityPoint];
+const flowLink = new IconFlow(linkPts, {
+  t0: 116, t1: 130, speed: 1.55, spacing: 1.7, count: 9, size: 0.34,
+  tint: (u) => new THREE.Color(u < 0.45 ? 0xbfe9ff : 0xffe2b8),
+});
+
+/* ---------- transponder cutaway, built far from the main scene ---------- */
+const CT = V3(300, 0, 0);
+const cut = new THREE.Group(); cut.position.copy(CT); scene.add(cut); cut.visible = false;
+const CUT = (function () {
+  const metal = std(0x8e99a8, 0.8, 0.35), darkm = std(0x1a2230, 0.6, 0.4), goldm = std(0xc79a3e, 0.85, 0.3);
+  const board = box(24, 0.18, 5, std(0x0a1c2c, 0.5, 0.5), 0, -2.1, 0); cut.add(board);
+  const grid = new THREE.GridHelper(24, 24, 0x1c4a66, 0x12334a); grid.scale.z = 5 / 24; grid.position.y = -2.0; grid.material.transparent = true; grid.material.opacity = 0.5; cut.add(grid);
+  const shell = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(25.4, 6.4, 6.4)), new THREE.LineBasicMaterial({ color: 0x4a6a96, transparent: true, opacity: 0.55 }));
+  shell.position.y = 0.9; cut.add(shell);
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(25.4, 6.4, 6.4), new THREE.MeshBasicMaterial({ color: 0x1a2c4a, transparent: true, opacity: 0.06, side: THREE.BackSide, depthWrite: false }));
+  wall.position.y = 0.9; cut.add(wall);
+  /* antennas */
+  const rxd = makeDish(1.7, 1.5); rxd.position.x = -10; rxd.rotation.y = -Math.PI / 2; cut.add(rxd);
+  const txd = makeDish(1.7, 1.5); txd.position.x = 10; txd.rotation.y = Math.PI / 2; cut.add(txd);
+  /* waveguides */
+  const wg = std(0xb4bcc8, 0.9, 0.25);
+  [[-11.5, -7.4], [-5.6, -4.2], [-1.6, -1.2], [3.4, 3.8], [7.2, 7.6], [8.8, 11.5]].forEach(([a, b]) => {
+    const m = rod(V3(a, 0, 0), V3(b, 0, 0), 0.2, wg, 12); cut.add(m);
+    for (let x = a + 0.3; x < b - 0.1; x += 0.8) { const fl = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.07, 12), wg); fl.position.set(x, 0, 0); fl.rotation.z = Math.PI / 2; cut.add(fl); }
+  });
+  /* modules: [x0, x1, height, depth, body colour, accent] */
+  const defs = [
+    ['filter', -7.4, -5.6, 2.2, 2.2, 0x7d8896, 0x9ad0ff],
+    ['lna', -4.2, -1.6, 2.6, 2.6, 0x23364f, 0x4cc9ff],
+    ['conv', -1.2, 3.4, 3.2, 3.4, 0x2a3346, 0xffd36a],
+    ['pa', 3.8, 7.2, 3.4, 3.4, 0x2b2f38, 0xff8a3a],
+    ['ofilter', 7.6, 8.8, 2.0, 2.0, 0x7d8896, 0xffb23e],
+  ];
+  const mods = {};
+  defs.forEach(([name, x0, x1, h, d, col, acc]) => {
+    const g = new THREE.Group(), w = x1 - x0;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: col, metalness: 0.7, roughness: 0.38, emissive: acc, emissiveIntensity: 0.0, transparent: true, opacity: 0.5 }));
+    g.add(body);
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(w * 0.9, 0.06, d * 0.9), std(acc, 0.2, 0.5, { emissive: acc, emissiveIntensity: 0.5 }));
+    lid.position.y = h / 2 + 0.03; g.add(lid);
+    g.position.set((x0 + x1) / 2, -2.0 + h / 2, 0);
+    cut.add(g); mods[name] = { body, lid, x0, x1 };
+    if (name === 'pa') for (let i = 0; i < 11; i++) { const f = box(w * 0.88, 0.62, 0.05, metal, 0, 0.5, 0); f.position.set(0, h / 2 + 0.35 - 0.0, -d / 2 + 0.3 + i * (d - 0.6) / 10); f.scale.set(1, 1, 1); g.add(f); }
+    if (name === 'lna') { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.8, 18), goldm); c.position.set(0, h / 2 + 0.4, 0); g.add(c); }
+    if (name === 'conv') {
+      const lo = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.9, 20), goldm); lo.position.set(-1.2, h / 2 + 0.45, 0.4); g.add(lo);
+      const mx = box(1.4, 0.5, 1.2, darkm, 1.0, h / 2 + 0.25, -0.2); g.add(mx);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 8, 24), std(0xffd36a, 0.4, 0.4, { emissive: 0xffd36a, emissiveIntensity: 0.7 })); ring.rotation.x = Math.PI / 2; ring.position.set(1.0, h / 2 + 0.55, -0.2); g.add(ring);
+    }
+  });
+  /* oscilloscopes */
+  const scopes = [
+    { x: -6.5, amp: 0.1, noise: 0.14, cyc: 14, col: 0x4cc9ff },
+    { x: -2.9, amp: 0.3, noise: 0.03, cyc: 14, col: 0x4cc9ff },
+    { x: 1.1, amp: 0.3, noise: 0.03, cyc: 12, col: 0xffb23e },
+    { x: 5.5, amp: 0.56, noise: 0.03, cyc: 12, col: 0xffb23e },
+  ];
+  const NP = 170;
+  scopes.forEach((s) => {
+    const g = new THREE.Group(); g.position.set(s.x, 3.6, 0);
+    g.add(new THREE.Mesh(new THREE.PlaneGeometry(3.0, 1.6), new THREE.MeshBasicMaterial({ color: 0x050b16, transparent: true, opacity: 0.82, depthWrite: false })));
+    g.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.PlaneGeometry(3.0, 1.6)), new THREE.LineBasicMaterial({ color: 0x3a5a86 })));
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NP * 3), 3));
+    s.line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: s.col, transparent: true })); s.line.position.z = 0.02; g.add(s.line);
+    s.g = g; cut.add(g);
+  });
+  /* signal packets */
+  const packets = [];
+  for (let i = 0; i < 8; i++) { const sp = glow(0x4cc9ff, 0.8); cut.add(sp); const core = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffffff })); sp.add(core); packets.push({ sp, core }); }
+  /* radiation at the antennas */
+  const rxWave = new Beam(V3(-17, 0, 0).add(CT), V3(-11.8, 0, 0).add(CT), 0x4cc9ff, { parent: scene, rings: 5, pulses: 3, spread: 0.9, w: 0.05, psize: 0.7 });
+  const txWave = new Beam(V3(11.8, 0, 0).add(CT), V3(18, 0, 0).add(CT), 0xffb23e, { parent: scene, rings: 6, pulses: 3, spread: 1.6, w: 0.05, psize: 0.7 });
+  const pl = (p, ps, xs) => { for (let i = 1; i < ps.length; i++) if (p <= ps[i]) return lerp(xs[i - 1], xs[i], (p - ps[i - 1]) / (ps[i] - ps[i - 1])); return xs[xs.length - 1]; };
+  const PS = [0, 0.2, 0.4, 0.62, 0.82, 1], XS = [-11.5, -4.4, -1.4, 3.8, 7.6, 11.5];
+  const T0 = 67, T1 = 93;
+  const leadX = (t) => pl(clamp((t - T0) / (T1 - T0)), PS, XS);
+  const stageOf = (t) => { const p = clamp((t - T0) / (T1 - T0)); return p < 0.2 ? 0 : p < 0.4 ? 1 : p < 0.62 ? 2 : p < 0.82 ? 3 : 4; };
+  const blue = new THREE.Color(0x4cc9ff), amber = new THREE.Color(0xffb23e), tmp = new THREE.Color();
+  function update(t) {
+    const lx = leadX(t), started = t >= T0 - 1;
+    packets.forEach((p, i) => {
+      const x = lx - i * 1.25, vis = started && x > -11.6 && x < 11.7 && (t >= T0);
+      p.sp.visible = vis; if (!vis) return;
+      p.sp.position.set(x, 0, 0);
+      const u = sstep(-1.2, 3.4, x);
+      tmp.copy(blue).lerp(amber, u); p.sp.material.color.copy(tmp);
+      const amp = 0.28 + 0.16 * sstep(-4.2, -1.6, x) + 0.34 * sstep(3.8, 7.2, x) - 0.14 * (1 - sstep(-8, -5, x));
+      const sc = 0.55 + amp * 1.5; p.sp.scale.set(sc, sc, 1);
+      p.core.scale.setScalar(0.6 + amp * 1.3);
+    });
+    Object.values(mods).forEach((m) => {
+      const inside = t >= T0 ? Math.max(0, 1 - Math.max(0, Math.abs(lx - (m.x0 + m.x1) / 2) - (m.x1 - m.x0) / 2) / 1.6) : 0;
+      m.body.material.emissiveIntensity = 0.5 * inside; m.lid.material.emissiveIntensity = 0.5 + 1.2 * inside;
+    });
+    scopes.forEach((s, k) => {
+      const near = t >= T0 ? clamp(1.2 - Math.abs(lx - s.x) / 6) : 0.35;
+      s.line.material.opacity = 0.3 + 0.7 * near;
+      const a = s.line.geometry.attributes.position, ph = t * 3.2;
+      for (let i = 0; i < NP; i++) {
+        const u = i / (NP - 1), x = (u - 0.5) * 2.7;
+        const env = 0.62 + 0.38 * Math.sin(u * 6.2832 * 1.3 - t * 1.4);
+        const noise = (Math.sin(i * 12.9898 + t * 40 + k) * 43758.5453 % 1) * s.noise;
+        a.setXYZ(i, x, s.amp * env * Math.sin(u * 6.2832 * s.cyc + ph) + noise, 0);
+      }
+      a.needsUpdate = true;
+    });
+    const wave = t >= T0 - 3 && t < T1 + 4;
+    rxWave.update(t, wave ? 1 : 0, wave ? 1 * (t < T0 + 2 ? 1 : 0.35) : 0);
+    txWave.update(t, wave ? sstep(T1 - 6, T1 - 2, t) : 0, wave ? 1 : 0);
+  }
+  return { update, leadX, stageOf, T0, T1, mods };
+})();
+const cutLights = [V3(-6, 6, 8), V3(6, 6, 8)].map((p) => { const l = new THREE.PointLight(0xbfd6ff, 0.9, 45); l.position.copy(p); cut.add(l); return l; });
+/* ---------- everyday-use vignettes (scene 8) ---------- */
+const apps = { tv: new THREE.Group(), net: new THREE.Group(), voice: new THREE.Group(), wx: new THREE.Group(), nav: new THREE.Group() };
+Object.values(apps).forEach((g) => { world.add(g); g.visible = false; });
+const AMBER = 0xffb23e, BLUE = 0x4cc9ff, SIG = 0x7dffb0;
+const miniBeam = (a, b, col, parent) => new Beam(a, b, col, { parent, w: 0.006, rings: 3, pulses: 2, spread: 0.04, psize: 0.09, speed: 0.8 });
+
+/* television: one satellite, many home dishes */
+const FT = frame(14, 0); makeCap(FT, 1.7);
+const tvBeams = [];
+[[-0.9, -0.55, 0.4], [-0.35, 0.65, 2.2], [0.3, -0.8, 1], [0.85, 0.45, 3], [1.25, -0.35, 0.2], [-0.55, 0.0, 1.7], [0.2, 0.15, 2.6]].forEach(([x, y, yaw]) => {
+  const h = makeHouse(true); placeOn(h, FT, x, y, yaw); apps.tv.add(h); h.updateMatrixWorld(true);
+  const d = h.getObjectByName('dish'); d.lookAt(sat.txMouth); h.updateMatrixWorld(true);
+  tvBeams.push(miniBeam(sat.txMouth, d.localToWorld(V3(0, 0, 0.05)), AMBER, apps.tv));
+});
+
+/* internet for a remote mountain village */
+const FI = frame(26, 18); makeCap(FI, 1.7);
+(function () {
+  const rock = std(0x6c6a66, 0.05, 0.95, { flatShading: true }), snow = std(0xf2f6fa, 0, 0.8, { flatShading: true });
+  [[-1.0, 0.7, 0.34, 0.75], [-0.4, 1.0, 0.28, 0.55], [1.0, 0.8, 0.38, 0.8], [1.3, -0.2, 0.3, 0.6], [-1.2, -0.3, 0.32, 0.6], [0.2, 1.2, 0.3, 0.65]].forEach(([x, y, r, h]) => {
+    const g = new THREE.Group();
+    const c = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), rock); c.geometry.rotateX(Math.PI / 2); c.position.z = h / 2; g.add(c);
+    const s = new THREE.Mesh(new THREE.ConeGeometry(r * 0.38, h * 0.36, 7), snow); s.geometry.rotateX(Math.PI / 2); s.position.z = h * 0.82; g.add(s);
+    placeOn(g, FI, x, y, 0.3); apps.net.add(g);
+  });
+})();
+let netMouth;
+[[-0.35, -0.25, 0.3, false], [0.1, -0.5, 1.2, false], [0.35, -0.1, 2.2, false], [-0.1, 0.0, 0.8, true]].forEach(([x, y, yaw, dish]) => {
+  const h = makeHouse(dish, dish); placeOn(h, FI, x, y, yaw); apps.net.add(h);
+  if (dish) { h.updateMatrixWorld(true); const d = h.getObjectByName('dish'); d.lookAt(sat.rxMouth); h.updateMatrixWorld(true); netMouth = d.localToWorld(V3(0, 0, 0.05)); }
+});
+const netUp = new Beam(netMouth, sat.rxMouth, BLUE, { parent: apps.net, w: 0.007, rings: 3, pulses: 2, spread: 0.05, psize: 0.1 });
+const netDown = new Beam(sat.txMouth, netMouth, AMBER, { parent: apps.net, w: 0.007, rings: 3, pulses: 2, spread: 0.05, psize: 0.1 });
+
+/* voice link between two distant callers */
+const FV1 = frame(-12, -28), FV2 = frame(-10, 30);
+function pin(fr, col) {
+  const g = new THREE.Group(), top = fr.at(0, 0, 0.4);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: ICONS[0], transparent: true, depthTest: false })); s.scale.set(0.34, 0.34, 1); s.position.copy(top); s.renderOrder = 8; g.add(s);
+  const gl = glow(col, 0.7); gl.position.copy(fr.at(0, 0, 0.04)); g.add(gl);
+  g.add(rod(fr.at(0, 0, 0), top, 0.006, std(col, 0.2, 0.5, { emissive: col, emissiveIntensity: 0.8 }), 5));
+  apps.voice.add(g); return fr.at(0, 0, 0.4);
+}
+const vp1 = pin(FV1, BLUE), vp2 = pin(FV2, 0xffffff);
+const voiceBeams = [miniBeam(vp1, sat.rxMouth, BLUE, apps.voice), miniBeam(sat.txMouth, vp2, AMBER, apps.voice), miniBeam(vp2, sat.rxMouth, BLUE, apps.voice), miniBeam(sat.txMouth, vp1, AMBER, apps.voice)];
+voiceBeams.forEach((b) => { b.w = 0.009; b.psize = 0.12; });
+
+/* weather: a different spacecraft, watching a storm and sending the images down */
+const FW = frame(22, 25);
+const storm = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.8), new THREE.MeshBasicMaterial({ map: hurricaneTexture(), transparent: true, opacity: 0.92, depthWrite: false }));
+placeOn(storm, FW, 0, 0, 0, 0.075); apps.wx.add(storm);
+const wsat = makeWeatherSat(); wsat.scale.setScalar(0.9);
+wsat.position.copy(FW.n.clone().multiplyScalar(8.4)); wsat.lookAt(wsat.position.clone().multiplyScalar(2)); apps.wx.add(wsat);
+(function () {
+  const H = 8.4 - 5.08, g = new THREE.ConeGeometry(0.95, H, 28, 1, true); g.translate(0, -H / 2, 0);
+  const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0x5fe0d0, transparent: true, opacity: 0.12, blending: ADD, side: THREE.DoubleSide, depthWrite: false }));
+  m.position.copy(wsat.position); m.quaternion.setFromUnitVectors(V3(0, -1, 0), FW.n.clone().negate()); apps.wx.add(m);
+})();
+const wxBeam = new Beam(wsat.position.clone().add(V3(0, 0, 0)), stB.mouth, AMBER, { parent: apps.wx, w: 0.01, rings: 3, pulses: 3, spread: 0.08, psize: 0.14 });
+
+/* navigation: several satellites, one receiver fix */
+const navDefs = [{ incl: 55, raan: 0, th: 1.0 }, { incl: 55, raan: 60, th: 1.9 }, { incl: 55, raan: -50, th: 1.4 }, { incl: 40, raan: 20, th: 2.4 }];
+const orbitPoint = (d, th, r) => V3(r * Math.cos(th), 0, r * Math.sin(th)).applyAxisAngle(V3(1, 0, 0), d.incl * DEG).applyAxisAngle(V3(0, 1, 0), d.raan * DEG);
+const NAVR = 7.6;
+navDefs.forEach((d) => {
+  d.obj = makeNavSat(); apps.nav.add(d.obj);
+  const pts = []; for (let i = 0; i < 160; i++) pts.push(orbitPoint(d, i / 160 * 6.2832, NAVR));
+  apps.nav.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x9db8e0, transparent: true, opacity: 0.22 })));
+});
+const FN = frame(-14, -10), FP = frame(8, -4);
+const ship = makeShip(); placeOn(ship, FN, 0, 0, 0.6, 0.02); apps.nav.add(ship);
+const plane = makePlane(); placeOn(plane, FP, 0, 0, 0.8, 0.7); apps.nav.add(plane);
+const navTargets = [FN.at(0, 0, 0.12), FP.at(0, 0, 0.72)];
+class NavLink {
+  constructor() {
+    this.line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(), V3(0, 0, 1)]), new THREE.LineBasicMaterial({ color: SIG, transparent: true, opacity: 0.55, blending: ADD, depthWrite: false }));
+    this.pulses = [glow(SIG, 0.14), glow(SIG, 0.14)]; apps.nav.add(this.line); this.pulses.forEach((p) => apps.nav.add(p));
+  }
+  update(t, a, b, n) {
+    const vis = n.dot(a.clone().sub(b).normalize()) > 0.06;
+    this.line.visible = vis; this.pulses.forEach((p) => (p.visible = vis));
+    if (!vis) return;
+    const p = this.line.geometry.attributes.position; p.setXYZ(0, a.x, a.y, a.z); p.setXYZ(1, b.x, b.y, b.z); p.needsUpdate = true;
+    this.pulses.forEach((s, i) => { const f = (t * 0.7 + i * 0.5) % 1; s.position.copy(a).lerp(b, f); s.material.opacity = Math.sin(Math.PI * f); });
+  }
+}
+const navLinks = []; navDefs.forEach(() => navTargets.forEach(() => navLinks.push(new NavLink())));
+const fixRing = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 40), new THREE.MeshBasicMaterial({ color: SIG, transparent: true, opacity: 0.6, blending: ADD, side: THREE.DoubleSide, depthWrite: false }));
+placeOn(fixRing, FN, 0, 0, 0, 0.05); apps.nav.add(fixRing);
+function updateNav(t) {
+  navDefs.forEach((d) => {
+    const th = d.th + t * 0.13, p = orbitPoint(d, th, NAVR);
+    d.obj.position.copy(p); d.obj.lookAt(V3(0, 0, 0)); d.pos = p;
+  });
+  let k = 0;
+  navDefs.forEach((d) => navTargets.forEach((tg, j) => navLinks[k++].update(t, d.pos, tg, j === 0 ? FN.n : FP.n)));
+  const f = (t * 0.6) % 1; fixRing.scale.setScalar(0.12 + f * 0.4); fixRing.material.opacity = 0.7 * (1 - f);
+}
+/* ---------- script, scenes, captions ---------- */
+const TOTAL = 160;
+const SC = [
+  { name: 'Introduction', t0: 0, t1: 15, text: 'How can information travel between distant places, when the curve of the Earth blocks a direct path? A communication satellite relays radio signals through space.' },
+  { name: 'Why satellites', t0: 15, t1: 30, text: 'Ground-based radio links travel in straight lines, so the horizon limits their range. A satellite high above the Earth sees both stations at once, and relays the signal between them.' },
+  { name: 'Transmitting station', t0: 30, t1: 50, text: 'Communication begins at the transmitting Earth station. Voice, video and data are encoded, modulated onto a carrier, converted to the uplink radio frequency, amplified, and fed to a directional dish antenna. This transmission is the uplink.' },
+  { name: 'Uplink journey', t0: 50, t1: 65, text: 'The uplink is a beam of radio waves, not a cable. It crosses the atmosphere and about thirty-six thousand kilometres of space to reach the satellite\u2019s receiving antenna.' },
+  { name: 'Inside the transponder', t0: 65, t1: 95, text: 'Inside a bent-pipe satellite, the transponder first filters the signal and boosts the very weak uplink with a low-noise amplifier. A mixer and local oscillator then shift it to a different frequency, for example from fourteen to twelve gigahertz. A power amplifier strengthens it, and the transmitting antenna sends it back to Earth. Using separate frequencies keeps the strong downlink from interfering with the incoming signal.' },
+  { name: 'Downlink and receiver', t0: 95, t1: 115, text: 'The downlink beam is aimed at the receiving station. Its dish collects the faint signal, a low-noise amplifier strengthens it, and the receiver converts it back down, demodulates and decodes it, recovering the original voice, video and data for the destination network.' },
+  { name: 'The complete link', t0: 115, t1: 130, text: 'The complete link: transmitting station, uplink, transponder, downlink, receiving station. Both stations sit inside the satellite\u2019s coverage footprint, so the satellite relays signals far beyond their line of sight.' },
+  { name: 'Everyday uses', t0: 130, t1: 150, text: 'The same principle serves television broadcasting, internet access for remote communities, voice links, weather monitoring, and satellite navigation, where several satellites send timing signals to a receiver.' },
+  { name: 'Summary', t0: 150, t1: 160, text: 'From uplink to transponder to downlink, satellite communication carries information across great distances.' },
+];
+SC.forEach((s) => {
+  const parts = s.text.match(/[^.!?]+[.!?]+/g) || [s.text], tot = parts.reduce((a, p) => a + p.length, 0);
+  let acc = s.t0 + 0.4; const span = s.t1 - s.t0 - 1.1;
+  s.caps = parts.map((p) => { const d = span * p.length / tot, c = { a: acc, b: acc + d, text: p.trim() }; acc += d; return c; });
+});
+const sceneAt = (t) => { for (let i = 0; i < SC.length; i++) if (t < SC[i].t1) return i; return SC.length - 1; };
+
+const TAGS = [
+  [6, 14, 'A communication satellite', ''], [17, 29.5, 'Overcoming the curve of the Earth', ''],
+  [31, 39, 'Transmitting Earth station', ''], [39.5, 50, 'Uplink — Earth to satellite', 'up'],
+  [51, 64.8, 'Uplink — through the atmosphere and space', 'up'], [66, 94.5, 'Inside the satellite: the transponder', ''],
+  [95.5, 106, 'Downlink — satellite to Earth', 'down'], [106.5, 114.8, 'Receiving Earth station', 'down'],
+  [116, 129.5, 'The complete link', 'sig'], [130.4, 133.8, 'Television broadcasting', 'down'], [134.4, 137.8, 'Internet for remote areas', 'up'],
+  [138.4, 141.8, 'Voice links', ''], [142.4, 145.8, 'Weather monitoring', 'sig'], [146.4, 149.8, 'Satellite navigation', 'sig'],
+];
+const CHAINS = [
+  { a: 32, b: 48.5, kind: '', items: ['Voice · video · data', 'Encode & modulate', 'Up-convert', 'High-power amplifier', 'Dish antenna'] },
+  { a: 66.5, b: 94, kind: '', items: ['Receive', 'Amplify', 'Frequency conversion', 'Amplify', 'Retransmit'], stage: (t) => CUT.stageOf(t) },
+  { a: 104, b: 115, kind: 'down', items: ['Low-noise amplifier', 'Down-convert', 'Demodulate', 'Decode', 'Destination network'] },
+  { a: 116, b: 129.5, kind: 'sig', items: ['Transmitting station', 'Uplink', 'Transponder', 'Downlink', 'Receiving station'] },
+];
+const aboveOf = (v, fr, h = 0.45) => v.clone().addScaledVector(fr.n, h);
+const midUp = stA.mouth.clone().lerp(sat.rxMouth, 0.5), midDown = sat.txMouth.clone().lerp(stB.mouth, 0.5);
+const ANCH = [
+  [10, 30, SAT.clone().add(V3(0, 2.5, 0)), 'Communication satellite', 'geostationary orbit', ''],
+  [12, 30, aboveOf(FA.p, FA, 0.55), 'Station A', 'transmitting', 'up'],
+  [12, 30, aboveOf(FB.p, FB, 0.55), 'Station B', 'receiving', 'down'],
+  [18.5, 24, FA.at(0, 0, 0.12).addScaledVector(FA.e, 3.4), 'Straight radio path', 'leaves Earth at the horizon', ''],
+  [19.5, 24, FA.p.clone().lerp(FB.p, 0.5).add(V3(0, 0.6, 0)), 'Blocked by the curve', 'of the Earth', ''],
+  [26, 30, midUp.clone().add(V3(-0.5, 0.7, 0)), 'Uplink', '', 'up'], [26, 30, midDown.clone().add(V3(0.5, 0.7, 0)), 'Downlink', '', 'down'],
+  [31, 38, stA.person.clone().add(FA.n.clone().multiplyScalar(0.34)), 'Voice, video, data', '', ''],
+  [32, 42, stA.bldg.clone().add(FA.n.clone().multiplyScalar(0.36)), 'Earth station equipment', '', ''],
+  [38, 49, aboveOf(stA.mouth, FA, 0.4), 'Dish antenna', '', ''],
+  [52, 63, midUp.clone().add(V3(-0.6, 0.5, 0)), 'Uplink', 'radio waves, example 14 GHz', 'up'],
+  [60.5, 64.8, sat.rxMouth.clone().add(V3(-0.1, 0.65, 0)), 'Receiving antenna', '', ''],
+  [96, 103, sat.txMouth.clone().add(V3(0.3, 0.65, 0)), 'Transmitting antenna', '', ''],
+  [100, 108, midDown.clone().add(V3(0.4, 0.45, 0)), 'Downlink', 'radio waves, example 12 GHz', 'down'],
+  [108.5, 115, aboveOf(stB.mouth, FB, 0.42), 'Receiving dish', '', 'down'],
+  [110.5, 116, stB.bldg.clone().add(FB.n.clone().multiplyScalar(0.36)), 'Receiver equipment', '', ''],
+  [113.5, 120, aboveOf(cityPoint, FB, 0.55), 'Destination network', '', ''],
+  [117, 129.5, aboveOf(stA.mouth, FA, 0.6), 'Transmitting Earth station', '', 'up'],
+  [117, 129.5, aboveOf(stB.mouth, FB, 0.6), 'Receiving Earth station', '', 'down'],
+  [117, 129.5, SAT.clone().add(V3(0, 2.5, 0)), 'Satellite transponder', '', ''],
+  [118, 129.5, midUp.clone().add(V3(-0.6, 0.1, 0)), 'Uplink', '', 'up'], [118, 129.5, midDown.clone().add(V3(0.6, 0.1, 0)), 'Downlink', '', 'down'],
+  [131, 134, aboveOf(FT.p, FT, 0.55), 'Home dishes', 'one broadcast, many receivers', 'down'],
+  [135, 138, aboveOf(FI.p, FI, 0.65), 'Remote village', 'satellite terminal', 'up'],
+  [138.8, 141.8, vp1.clone().add(V3(0, 0.3, 0)), 'Caller', '', 'up'], [138.8, 141.8, vp2.clone().add(V3(0, 0.3, 0)), 'Caller', '', 'down'],
+  [143, 146, aboveOf(wsat.position, FW, 0.7), 'Weather satellite', '', 'sig'], [143, 146, aboveOf(FW.p, FW, 0.7), 'Storm system', '', ''],
+  [147, 150, aboveOf(FN.p, FN, 0.5), 'Receiver position fix', '', 'sig'],
+];
+const CUTA = [
+  [-10.6, -3.4, 'Receiving antenna', ''], [-6.5, -3.2, 'Input filter', ''], [-2.9, -3.2, 'Low-noise amplifier', 'LNA'],
+  [1.1, -3.2, 'Frequency converter', 'mixer + local oscillator'], [5.5, -3.2, 'Power amplifier', ''], [8.2, -3.2, 'Output filter', ''], [10.6, -3.4, 'Transmitting antenna', ''],
+  [-6.5, 4.9, 'Received signal', 'weak, with noise · ~14 GHz'], [-2.9, 4.9, 'After the LNA', 'stronger, low noise · ~14 GHz'],
+  [1.1, 4.9, 'After conversion', 'new carrier · ~12 GHz'], [5.5, 4.9, 'After the power amp', 'high power · ~12 GHz'],
+];
+const anchors = [];
+const anchorLayer = $('anchors');
+function addAnchor(o) {
+  const el = document.createElement('div'); el.className = 'anc' + (o.kind ? ' ' + o.kind : '');
+  el.innerHTML = o.text + (o.small ? '<small>' + o.small + '</small>' : '');
+  anchorLayer.appendChild(el); o.el = el; anchors.push(o);
+}
+ANCH.forEach(([t0, t1, p, text, small, kind]) => addAnchor({ t0, t1, p, text, small, kind }));
+CUTA.forEach(([x, y, text, small]) => addAnchor({ t0: 66.5, t1: 94.5, p: V3(CT.x + x, y, 0), text, small, kind: '', cutX: x }));
+
+/* ---------- camera shots ---------- */
+const K = (t, p, l) => ({ t, p, l });
+const dirUp = upBeam.dir, sideUp = dirUp.clone().cross(UP).normalize();
+const dirDn = downBeam.dir, sideDn = dirDn.clone().cross(UP).normalize();
+const followUp = (t, u) => K(t, stA.mouth.clone().lerp(sat.rxMouth, u).addScaledVector(dirUp, -1.6).addScaledVector(sideUp, 0.9).addScaledVector(UP, 0.5), stA.mouth.clone().lerp(sat.rxMouth, u + 0.18));
+const followDn = (t, u) => K(t, sat.txMouth.clone().lerp(stB.mouth, u).addScaledVector(dirDn, -1.6).addScaledVector(sideDn, 0.9).addScaledVector(UP, 0.5), sat.txMouth.clone().lerp(stB.mouth, u + 0.18));
+const view = (fr, d, dn, de, lh = 0.1) => (t) => K(t, fr.p.clone().addScaledVector(fr.n, d).addScaledVector(fr.nn, dn).addScaledVector(fr.e, de), fr.at(0, 0, lh));
+const faceRx = stA.mouth.clone().sub(sat.rxMouth).normalize();
+const cutCam = (t, x, y, z, lx) => K(t, V3(CT.x + x, y, z), V3(CT.x + lx, 0.3, 0));
+const cutKF = [cutCam(65, 0, 3.4, 23, 0), cutCam(67, -7.5, 2.8, 15, -8.5)];
+for (let t = 70; t <= 92; t += 3) { const x = CUT.leadX(t); cutKF.push(cutCam(t, x * 0.85 - 1, 2.6, 12.5, x)); }
+cutKF.push(cutCam(95, 4, 3.2, 21, 4));
+const shots = [
+  { t0: 0, t1: 30, kf: [
+    K(0, V3(18, 3, -10), V3(0, 0, 0)), K(6, V3(15, 2.5, 5), V3(0, 0, 3)), K(9.5, V3(6.5, 2, 4.6), V3(0, 0, 10)),
+    K(12.5, V3(3, 3, 18), V3(0, 0, 6)), K(15, V3(0, 6, 24), V3(0, 0, 5)), K(19, V3(-6, 15, 16), V3(0, 0, 5.5)),
+    K(24, V3(0, 18, 14), V3(0, 0, 5.5)), K(30, V3(6, 16, 14), V3(0, 0, 5.5))] },
+  { t0: 30, t1: 65, kf: [
+    K(30, FA.at(-3.2, -2.8, 1.5), FA.at(-0.8, -0.2, 0.15)), K(36, FA.at(-2.0, -1.7, 0.8), FA.at(-0.4, -0.1, 0.15)),
+    K(41, FA.at(-1.1, -1.2, 0.55), FA.at(0, 0, 0.35)),
+    K(46, stA.mouth.clone().addScaledVector(dirUp, -1.1).addScaledVector(FA.n, 0.3), stA.mouth.clone().addScaledVector(dirUp, 2)),
+    followUp(51, 0.04), followUp(54, 0.14), followUp(57.5, 0.4), followUp(61, 0.7), followUp(63.5, 0.92),
+    K(64.9, sat.rxMouth.clone().addScaledVector(faceRx, 1.5).add(V3(0, 0.5, 0)), sat.rxMouth)] },
+  { t0: 65, t1: 95, kf: cutKF },
+  { t0: 95, t1: 130, kf: [
+    K(95, V3(-1.6, 1.1, 7.9), sat.txMouth), K(99, V3(-0.3, 0.9, 7.6), sat.txMouth.clone().addScaledVector(dirDn, 1.5)),
+    followDn(103, 0.2), followDn(106, 0.6), followDn(108.6, 0.9),
+    K(110, FB.at(-0.9, -1.3, 0.5), FB.at(0, 0, 0.3)), K(112.5, FB.at(-0.2, -1.8, 0.7), FB.at(-0.5, -0.3, 0.1)),
+    K(115, FB.at(1.0, -2.2, 1.0), FB.at(1.4, 0.1, 0.15)), K(118, FB.at(3, -4, 3.5), FB.p),
+    K(123, V3(0, 5, 26), V3(0, 0, 5)), K(130, V3(-5, 7, 23), V3(0, 0, 5))] },
+  { t0: 130, t1: 160, kf: [
+    K(130, FT.p.clone().addScaledVector(FT.n, 3.4).addScaledVector(FT.nn, -2.4).addScaledVector(FT.e, -1.0), FT.at(0, 0, 0.1)),
+    K(133.2, FT.p.clone().addScaledVector(FT.n, 2.6).addScaledVector(FT.nn, -1.6).addScaledVector(FT.e, -0.4), FT.at(0, 0, 0.1)),
+    K(134.7, FI.p.clone().addScaledVector(FI.n, 3.4).addScaledVector(FI.nn, -2.4).addScaledVector(FI.e, -0.8), FI.at(0, 0, 0.2)),
+    K(137.5, FI.p.clone().addScaledVector(FI.n, 2.7).addScaledVector(FI.nn, -1.8).addScaledVector(FI.e, -0.3), FI.at(0, 0, 0.2)),
+    K(138.9, V3(0, -5, 19), V3(0, -1.5, 6)), K(141.6, V3(2, -5.5, 18), V3(0, -1.5, 6)),
+    K(142.9, FW.p.clone().addScaledVector(FW.n, 5.2).addScaledVector(FW.nn, -2.2).addScaledVector(FW.e, 1.5), FW.at(0, 0, 2)),
+    K(145.6, FW.p.clone().addScaledVector(FW.n, 4.4).addScaledVector(FW.nn, -1.6).addScaledVector(FW.e, 1.0), FW.at(0, 0, 2.2)),
+    K(146.9, V3(6, 3, 19), V3(0, -1, 5)), K(149.5, V3(2, 2.5, 20), V3(0, -1, 5)),
+    K(152, V3(0, 5, 22), V3(0, 0, 5)), K(160, V3(0, 4, 42), V3(0, 0, 6))] },
+];
+const CUTS = [30, 65, 95];
+function herm(a, b, m0, m1, s, dt) {
+  const s2 = s * s, s3 = s2 * s, h00 = 2 * s3 - 3 * s2 + 1, h10 = s3 - 2 * s2 + s, h01 = -2 * s3 + 3 * s2, h11 = s3 - s2;
+  return a.clone().multiplyScalar(h00).addScaledVector(m0, h10 * dt).addScaledVector(b, h01).addScaledVector(m1, h11 * dt);
+}
+function camAt(sh, t, key) {
+  const kf = sh.kf, n = kf.length;
+  if (t <= kf[0].t) return kf[0][key].clone();
+  if (t >= kf[n - 1].t) return kf[n - 1][key].clone();
+  let i = 0; while (kf[i + 1].t < t) i++;
+  const a = kf[i], b = kf[i + 1], dt = b.t - a.t, s = (t - a.t) / dt;
+  const tan = (j) => {
+    if (j <= 0) return b[key].clone().sub(a[key]).multiplyScalar(0.5 / dt * 0);
+    if (j >= n - 1) return V3(0, 0, 0);
+    return kf[j + 1][key].clone().sub(kf[j - 1][key]).divideScalar(kf[j + 1].t - kf[j - 1].t);
+  };
+  return herm(a[key], b[key], tan(i), tan(i + 1), s, dt);
+}
+
+/* ---------- per-frame scene state ---------- */
+function updateBeams(t) {
+  let up = 0, upP = 0, dn = 0, dnP = 0;
+  if (t >= 22.5 && t < 30) { upP = sstep(22.5, 24.5, t); up = 0.55; dnP = sstep(24, 26, t); dn = 0.55; }
+  else if (t >= 40 && t < 130) { upP = sstep(40, 49.5, t); up = 1; }
+  if (t >= 96 && t < 130) { dnP = sstep(96, 104, t); dn = 1; }
+  if (t >= 150) { const f = sstep(150, 153, t); up = f; upP = 1; dn = f; dnP = 1; }
+  upBeam.update(t, upP, up); downBeam.update(t, dnP, dn);
+  const inT = t >= 16 && t < 24.2;
+  terrBeam.update(t, sstep(16, 19, t), inT ? 1 - sstep(22, 24, t) : 0);
+  const bo = 0.8 * sstep(18.5, 20.5, t) * (1 - sstep(22.5, 24, t));
+  blocked.material.opacity = bo; blocked.visible = bo > 0.01; horizonMark.visible = bo > 0.01;
+  apps.tv.visible = t >= 129.5 && t < 134.5; apps.net.visible = t >= 133.5 && t < 138.5;
+  apps.voice.visible = t >= 137.5 && t < 142.5; apps.wx.visible = t >= 141.5 && t < 146.5; apps.nav.visible = t >= 145.5 && t < 150.5;
+  if (apps.tv.visible) tvBeams.forEach((b) => b.update(t, sstep(130, 132, t), 1));
+  if (apps.net.visible) { netUp.update(t, sstep(134, 136, t), 1); netDown.update(t, sstep(134, 136, t), 1); }
+  if (apps.voice.visible) voiceBeams.forEach((b) => b.update(t, sstep(138, 140, t), 1));
+  if (apps.wx.visible) wxBeam.update(t, sstep(142, 144, t), 1);
+  if (apps.nav.visible) updateNav(t);
+  flowA.update(t); flowB.update(t); flowLink.update(t);
+}
+const V = V3(0, 0, 0);
+function updateHud(t) {
+  const W = stageEl.clientWidth, H = stageEl.clientHeight;
+  const lx = t >= 65 && t < 95 ? CUT.leadX(t) : 0;
+  for (const a of anchors) {
+    let o = sstep(a.t0, a.t0 + 0.6, t) * (1 - sstep(a.t1 - 0.6, a.t1, t));
+    if (a.cutX !== undefined) o *= clamp(1.35 - Math.abs(lx - a.cutX) / 5);
+    if (o < 0.02) { if (a.shown) { a.el.style.opacity = 0; a.shown = false; } continue; }
+    V.copy(a.p).project(camera);
+    if (V.z > 1 || Math.abs(V.x) > 1.15 || Math.abs(V.y) > 1.15) { a.el.style.opacity = 0; a.shown = false; continue; }
+    a.el.style.opacity = o.toFixed(2); a.shown = true;
+    a.el.style.transform = `translate(${((V.x * 0.5 + 0.5) * W).toFixed(1)}px,${((-V.y * 0.5 + 0.5) * H).toFixed(1)}px) translate(-50%,calc(-100% - 14px))`;
+  }
+  /* tag */
+  const tg = TAGS.find((x) => t >= x[0] && t < x[1]);
+  const tagEl = $('tag'), tagKey = tg ? tg[2] : '';
+  if (tagEl.dataset.k !== tagKey) { tagEl.dataset.k = tagKey; if (tg) { tagEl.textContent = tg[2]; tagEl.className = 'tag ' + tg[3]; } }
+  tagEl.style.opacity = tg ? 1 : 0;
+  /* chain */
+  const ch = CHAINS.find((c) => t >= c.a && t < c.b), chEl = $('chain');
+  if (ch) {
+    if (chEl.dataset.k !== ch.items[0]) { chEl.dataset.k = ch.items[0]; chEl.className = 'chain ' + ch.kind; chEl.innerHTML = ch.items.map((i) => '<i>' + i + '</i>').join(''); }
+    const idx = ch.stage ? ch.stage(t) : Math.min(ch.items.length - 1, Math.floor((t - ch.a) / (ch.b - ch.a) * ch.items.length));
+    [...chEl.children].forEach((c, i) => c.classList.toggle('on', i <= idx && i >= idx - 0));
+    chEl.style.opacity = 1;
+  } else chEl.style.opacity = 0;
+  $('foot').style.opacity = t >= 67 && t < 94 ? 1 : 0;
+  /* title */
+  const ti = $('title'), finalCard = t >= 153;
+  if (ti.dataset.k !== (finalCard ? 'f' : 'i')) {
+    ti.dataset.k = finalCard ? 'f' : 'i';
+    ti.innerHTML = finalCard ? '<b>Connecting the world through space</b><span>Uplink → Transponder → Downlink</span>' : '<b>How Satellite Communication Works</b><span>From Earth to space and back</span>';
+  }
+  ti.style.opacity = (t >= 11 && t < 16) || (t >= 153.5 && t < 159) ? 1 : 0;
+  /* caption */
+  const sc = SC[sceneAt(t)], cp = sc.caps.find((c) => t >= c.a && t < c.b), capEl = $('cap');
+  if (cp) { if (capEl.textContent !== cp.text) capEl.textContent = cp.text; capEl.classList.add('show'); } else capEl.classList.remove('show');
+  /* fades: cuts dip to black, final fade out */
+  let f = sstep(157.5, 160, t);
+  for (const c of CUTS) f = Math.max(f, 1 - clamp(Math.abs(t - c) / 0.5));
+  $('fade').style.opacity = f.toFixed(3);
+}
+/* ---------- audio: ambience and narration ---------- */
+const AMBI = { ctx: null, on: false, master: null, base: 0.16 };
+function startAmbience() {
+  try {
+    if (!AMBI.ctx) {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.connect(master);
+      [55, 82.41, 110.3, 164.9].forEach((f, i) => {
+        const o = ctx.createOscillator(); o.type = i % 2 ? 'sine' : 'triangle'; o.frequency.value = f; o.detune.value = (i - 1.5) * 4;
+        const g = ctx.createGain(); g.gain.value = 0.22 / (i + 1); o.connect(g); g.connect(lp); o.start();
+      });
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07; const lg = ctx.createGain(); lg.gain.value = 180; lfo.connect(lg); lg.connect(lp.frequency); lfo.start();
+      AMBI.ctx = ctx; AMBI.master = master;
+    }
+    AMBI.ctx.resume();
+    AMBI.master.gain.cancelScheduledValues(0); AMBI.master.gain.linearRampToValueAtTime(AMBI.base, AMBI.ctx.currentTime + 1.5);
+    AMBI.on = true;
+  } catch (e) { AMBI.on = false; }
+}
+function stopAmbience() {
+  AMBI.on = false;
+  if (AMBI.ctx) { AMBI.master.gain.cancelScheduledValues(0); AMBI.master.gain.linearRampToValueAtTime(0, AMBI.ctx.currentTime + 0.5); }
+}
+function blip(freq) {
+  if (!AMBI.on || !AMBI.ctx) return;
+  const c = AMBI.ctx, o = c.createOscillator(), g = c.createGain();
+  o.type = 'sine'; o.frequency.value = freq; g.gain.value = 0;
+  o.connect(g); g.connect(c.destination);
+  g.gain.linearRampToValueAtTime(0.06, c.currentTime + 0.03); g.gain.exponentialRampToValueAtTime(0.0008, c.currentTime + 0.5);
+  o.start(); o.stop(c.currentTime + 0.55);
+}
+const BLIPS = [[41, 660], [64.6, 880], [92.8, 520], [96.5, 740]];
+
+const NAR = { on: false, idx: -1, voice: null, manual: false };
+const MALE = /\b(male|guy|davis|ryan|andrew|christopher|eric|brian|roger|steffan|daniel|alex|fred|tom|aaron|arthur|oliver|david|mark|james|george|thomas|gordon|lee|reed|ralph|evan|nathan|rishi|liam|william|jason|tony|ronald|sean|matthew|connor)\b/i;
+const FEMALE = /\b(female|zira|aria|jenny|samantha|susan|hazel|karen|moira|tessa|fiona|libby|sonia|emma|michelle|ana|catherine|victoria|allison|ava|jane|nancy|sara|amy|kate|serena|joanna|ivy|kendra|kimberly|salli|molly|natasha|clara|mia|maisie|olivia)\b/i;
+function voiceScore(v) {
+  let s = 0;
+  if (!/^en/i.test(v.lang)) return -99;
+  if (FEMALE.test(v.name)) return -50;
+  if (MALE.test(v.name)) s += 6;
+  if (/natural|neural|online/i.test(v.name)) s += 4;
+  if (/premium|enhanced|siri/i.test(v.name)) s += 2;
+  if (/google/i.test(v.name)) s += 1;
+  if (/en[-_](US|GB)/i.test(v.lang)) s += 1;
+  return s;
+}
+function fillVoices() {
+  if (!('speechSynthesis' in window)) return;
+  const all = window.speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang));
+  if (!all.length) return;
+  const sel = $('voice'), ranked = all.slice().sort((a, b) => voiceScore(b) - voiceScore(a));
+  sel.innerHTML = '';
+  ranked.forEach((v, i) => {
+    const o = document.createElement('option');
+    o.value = v.name; o.textContent = (i === 0 && voiceScore(v) >= 6 ? 'Male \u00b7 ' : '') + v.name.replace(/^Microsoft\s+/, '') + ' (' + v.lang + ')';
+    sel.appendChild(o);
+  });
+  let want = null; try { want = localStorage.getItem('satlink-voice'); } catch (e) { /* storage may be blocked */ }
+  const keep = want && ranked.find((v) => v.name === want);
+  NAR.voice = keep || ranked[0]; NAR.manual = !!keep;
+  sel.value = NAR.voice.name;
+}
+if ('speechSynthesis' in window) {
+  fillVoices();
+  window.speechSynthesis.addEventListener && window.speechSynthesis.addEventListener('voiceschanged', fillVoices);
+}
+$('voice').addEventListener('change', (e) => {
+  const v = window.speechSynthesis.getVoices().find((x) => x.name === e.target.value);
+  if (v) { NAR.voice = v; NAR.manual = true; try { localStorage.setItem('satlink-voice', v.name); } catch (er) { /* ignore */ } }
+  if (NAR.on) NAR.idx = -1;
+});
+function speakScene(i) {
+  if (!('speechSynthesis' in window)) return;
+  const sc = SC[i], synth = window.speechSynthesis;
+  synth.cancel();
+  const v = NAR.voice, natural = v && /natural|neural|online|premium|enhanced/i.test(v.name);
+  const words = sc.text.split(/\s+/).length;
+  const rate = clamp(words / ((sc.t1 - sc.t0 - 1.4) * 2.45), 0.85, 1.25);
+  sc.caps.forEach((c) => {
+    const u = new SpeechSynthesisUtterance(c.text);
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'en-US';
+    u.rate = rate; u.pitch = natural ? 1 : 0.86; u.volume = 1;
+    synth.speak(u);
+  });
+}
+
+/* ---------- player state and controls ---------- */
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let T = reduced ? 13 : 0, playing = !reduced, lastNow = performance.now(), prevT = T, ready = false;
+const playBtn = $('play'), seek = $('seek'), clockEl = $('clock');
+const fmt = (s) => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+function syncPlayBtn() { playBtn.textContent = playing ? 'Pause' : (T >= TOTAL - 0.05 ? 'Replay' : 'Play'); }
+function setPlaying(p) {
+  playing = p; syncPlayBtn();
+  if ('speechSynthesis' in window && NAR.on) { if (p) window.speechSynthesis.resume(); else window.speechSynthesis.pause(); }
+}
+function jump(t, play) {
+  T = clamp(t, 0, TOTAL); prevT = T; NAR.idx = -1;
+  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if (play !== undefined) setPlaying(play); else syncPlayBtn();
+}
+playBtn.addEventListener('click', () => { if (T >= TOTAL - 0.05) jump(0, true); else setPlaying(!playing); });
+$('restart').addEventListener('click', () => jump(0, true));
+seek.addEventListener('input', () => jump(parseFloat(seek.value)));
+$('nar').addEventListener('click', (e) => {
+  NAR.on = !NAR.on; e.currentTarget.setAttribute('aria-pressed', String(NAR.on)); NAR.idx = -1;
+  if (!NAR.on && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+  if (NAR.on && !('speechSynthesis' in window)) { NAR.on = false; e.currentTarget.setAttribute('aria-pressed', 'false'); }
+});
+$('amb').addEventListener('click', (e) => {
+  if (AMBI.on) stopAmbience(); else startAmbience();
+  e.currentTarget.setAttribute('aria-pressed', String(AMBI.on));
+});
+$('fs').addEventListener('click', () => {
+  try {
+    if (document.fullscreenElement) document.exitFullscreen(); else if (stageEl.requestFullscreen) stageEl.requestFullscreen().catch(() => {});
+  } catch (e) { /* fullscreen is optional */ }
+});
+window.addEventListener('keydown', (e) => {
+  if (e.target && /INPUT|BUTTON|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.code === 'Space') { e.preventDefault(); playBtn.click(); }
+  else if (e.code === 'ArrowRight') jump(T + 5);
+  else if (e.code === 'ArrowLeft') jump(T - 5);
+});
+const sceneNav = $('scenes');
+SC.forEach((s, i) => {
+  const b = document.createElement('button'); b.type = 'button';
+  b.innerHTML = '<b>' + (i + 1) + '. ' + s.name + '</b><span>' + fmt(s.t0) + ' – ' + fmt(s.t1) + '</span>';
+  b.addEventListener('click', () => jump(s.t0 + 0.02, true));
+  sceneNav.appendChild(b); s.btn = b;
+});
+let lastScene = -1;
+
+/* ---------- main loop ---------- */
+function render(t) {
+  const inCut = t >= 65 && t < 95;
+  world.visible = !inCut; cut.visible = inCut;
+  clouds.rotation.y = t * 0.004;
+  updateBeams(t);
+  if (t > 60 && t < 99) CUT.update(t);
+  const sh = shots.find((s) => t < s.t1) || shots[shots.length - 1];
+  camera.position.copy(camAt(sh, t, 'p'));
+  camera.lookAt(camAt(sh, t, 'l'));
+  updateHud(t);
+  renderer.render(scene, camera);
+}
+function frameLoop(now) {
+  const dt = Math.min(0.1, (now - lastNow) / 1000); lastNow = now;
+  if (playing) {
+    T += dt;
+    if (T >= TOTAL) { T = TOTAL; setPlaying(false); }
+    for (const [bt, f] of BLIPS) if (prevT < bt && T >= bt) blip(f);
+    if (NAR.on) { const i = sceneAt(T); if (i !== NAR.idx && T < TOTAL - 0.2) { NAR.idx = i; speakScene(i); } }
+  }
+  prevT = T;
+  render(T);
+  if (!seek.matches(':active')) seek.value = T;
+  clockEl.textContent = fmt(T) + ' / ' + fmt(TOTAL);
+  const si = sceneAt(T);
+  if (si !== lastScene) { lastScene = si; SC.forEach((s, i) => s.btn.classList.toggle('on', i === si)); }
+  requestAnimationFrame(frameLoop);
+}
+syncPlayBtn();
+if ('speechSynthesis' in window) { try { window.speechSynthesis.getVoices(); } catch (e) { /* ignore */ } }
+setTimeout(() => {
+  applyEarthTextures(buildEarthTextures());
+  $('loading').classList.add('done');
+  ready = true; lastNow = performance.now();
+  requestAnimationFrame(frameLoop);
+}, 60);
+})();
+</script>
+
+</body></html>
